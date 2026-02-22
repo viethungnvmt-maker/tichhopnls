@@ -57,6 +57,7 @@ const App: React.FC = () => {
   // App state
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [result, setResult] = useState<LessonPlanData | null>(null);
   const [error, setError] = useState('');
 
@@ -136,10 +137,11 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     setError('');
+    setLoadingProgress(0);
 
     const messages = [
       'Đang đọc nội dung giáo án...',
-      'Phân tích cấu trúc bài học...',
+      'Đang phân tích cấu trúc giáo án...',
       'Đối chiếu với khung năng lực số...',
       'Thiết kế hoạt động tích hợp CNTT...',
       'Đang hoàn tất giáo án số hóa...'
@@ -151,9 +153,18 @@ const App: React.FC = () => {
       msgIndex++;
     }, 2500);
 
+    // Simulated progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 8 + 2;
+      if (progress > 90) progress = 90;
+      setLoadingProgress(Math.round(progress));
+    }, 800);
+
     try {
       const fullContent = `Môn học: ${subject}\nKhối lớp: ${grade}\n\nNội dung giáo án:\n${lessonText}`;
       const data = await analyzeLessonPlan(fullContent);
+      setLoadingProgress(100);
       setResult(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Có lỗi xảy ra';
@@ -161,6 +172,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
       clearInterval(interval);
+      clearInterval(progressInterval);
     }
   };
 
@@ -222,7 +234,22 @@ const App: React.FC = () => {
             <div className="section-title">Hoạt động tích hợp CNTT</div>
             {result.activities.map((activity, idx) => (
               <div key={idx} style={{ marginBottom: '1rem', padding: '1rem', background: '#0f172a', borderRadius: '12px', border: '1px solid #1e3a5f' }}>
-                <h4 style={{ color: '#fbbf24', marginBottom: '0.5rem' }}>{activity.name}</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  <h4 style={{ color: '#fbbf24', margin: 0 }}>{activity.name}</h4>
+                  {activity.nlsType && (
+                    <span style={{
+                      padding: '2px 10px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid #ef4444',
+                      borderRadius: '20px',
+                      fontSize: '0.7rem',
+                      fontWeight: '600',
+                      color: '#ef4444'
+                    }}>
+                      {activity.nlsType}
+                    </span>
+                  )}
+                </div>
                 <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{activity.digitalActivity}</p>
                 {activity.digitalTools && activity.digitalTools.length > 0 && (
                   <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -302,7 +329,7 @@ const App: React.FC = () => {
                   color: '#ef4444',
                   fontSize: '0.875rem'
                 }}>
-                  ★ Nội dung NLS: <strong>màu đỏ</strong> • Phân bố vào: Mục tiêu + Các Hoạt động
+                  🚀 Nội dung NLS: <strong>màu đỏ</strong>{includeAI && <> • Năng lực AI: <strong>màu xanh lam</strong></>} • Phân bổ vào: Mục tiêu + Các Hoạt động
                 </div>
               </div>
 
@@ -392,11 +419,77 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <div className="loading-container" style={{ flex: 1 }}>
-          <div className="loading-spinner"></div>
-          <h3 className="loading-text">Trí tuệ nhân tạo đang xử lý</h3>
-          <p className="loading-subtext">{loadingMessage}</p>
-        </div>
+        <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+          {/* Disabled submit button */}
+          <button
+            className="submit-btn"
+            disabled
+            style={{ opacity: 0.6, cursor: 'not-allowed', marginBottom: '2rem', width: '100%' }}
+          >
+            <Loader2 size={20} className="spin-animation" />
+            Đang xử lý...
+          </button>
+
+          {/* Progress card */}
+          <div className="form-card animate-fadeIn" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            {/* Circular progress */}
+            <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 1.5rem' }}>
+              <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#1e3a5f" strokeWidth="6" />
+                <circle
+                  cx="50" cy="50" r="42"
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="6"
+                  strokeDasharray={`${2 * Math.PI * 42}`}
+                  strokeDashoffset={`${2 * Math.PI * 42 * (1 - loadingProgress / 100)}`}
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                />
+              </svg>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                color: '#60a5fa'
+              }}>
+                {loadingProgress}%
+              </div>
+            </div>
+
+            {/* Linear progress bar */}
+            <div style={{
+              width: '80%',
+              height: '6px',
+              background: '#1e3a5f',
+              borderRadius: '3px',
+              margin: '0 auto 1.5rem',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${loadingProgress}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
+                borderRadius: '3px',
+                transition: 'width 0.5s ease'
+              }} />
+            </div>
+
+            {/* Status text */}
+            <h3 style={{ color: '#e2e8f0', fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+              {loadingMessage}
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Powered by Gemini AI
+            </p>
+            <p style={{ color: '#fbbf24', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              💡 Vui lòng không đóng trang này
+            </p>
+          </div>
+        </main>
       </div>
     );
   }

@@ -39,12 +39,13 @@ const createBulletParagraphXml = (text: string, frameworkRef?: string): string =
 };
 
 /**
- * Tạo nội dung NLS dưới dạng XML để chèn vào DOCX
+ * Tạo nội dung NLS cho phần MỤC TIÊU dưới dạng XML để chèn vào DOCX
  */
 const generateNLSXmlContent = (data: LessonPlanData, includeAI: boolean): string => {
   let xmlContent = '';
 
   // Header Năng lực số
+  xmlContent += createRedParagraphXml('🚀 MỤC TIÊU NĂNG LỰC SỐ:');
   xmlContent += createRedParagraphXml('- Năng lực số:');
 
   // Các mục tiêu NLS - bao gồm mã chỉ thị
@@ -53,7 +54,6 @@ const generateNLSXmlContent = (data: LessonPlanData, includeAI: boolean): string
       xmlContent += createBulletParagraphXml(goal.description, goal.frameworkRef);
     });
   } else {
-    // Default goals nếu không có
     xmlContent += createBulletParagraphXml('Khai thác và sử dụng các công cụ số trong học tập');
     xmlContent += createBulletParagraphXml('Hợp tác và giao tiếp qua môi trường số');
     xmlContent += createBulletParagraphXml('Đánh giá và chọn lọc thông tin số');
@@ -61,12 +61,61 @@ const generateNLSXmlContent = (data: LessonPlanData, includeAI: boolean): string
 
   // Năng lực AI nếu được bật
   if (includeAI) {
-    xmlContent += createRedParagraphXml('- Năng lực trí tuệ nhân tạo:');
+    xmlContent += createRedParagraphXml('- Năng lực trí tuệ nhân tạo (AI):');
     xmlContent += createBulletParagraphXml('Sử dụng công cụ AI hỗ trợ học tập có trách nhiệm', '6.1');
     xmlContent += createBulletParagraphXml('Đánh giá và kiểm chứng thông tin từ AI', '6.2');
   }
 
   return xmlContent;
+};
+
+/**
+ * Tạo XML paragraph cho NLS tại mỗi hoạt động
+ */
+const generateActivityNLSXml = (activityIndex: number, nlsType: string, digitalActivity: string): string => {
+  let xml = '';
+  const label = `🚀 HOẠT ĐỘNG ${activityIndex + 1} - ${nlsType}:`;
+  xml += createRedParagraphXml(label);
+  xml += `<w:p><w:pPr><w:ind w:left="1080" w:firstLine="0"/></w:pPr><w:r><w:rPr><w:color w:val="FF0000"/></w:rPr><w:t>- ${escapeXml(digitalActivity)}</w:t></w:r></w:p>`;
+  return xml;
+};
+
+/**
+ * Tìm tất cả vị trí các Hoạt động trong XML (Hoạt động 1, 2, 3, 4...)
+ */
+const findActivityPositions = (xmlContent: string): { index: number; position: number }[] => {
+  const results: { index: number; position: number }[] = [];
+
+  // Patterns cho các hoạt động phổ biến trong giáo án Việt Nam
+  const activityPatterns = [
+    /hoạt\s*động\s*(\d+)/gi,
+    /HOẠT\s*ĐỘNG\s*(\d+)/gi,
+    /HĐ\s*(\d+)/gi,
+  ];
+
+  const foundPositions = new Map<number, number>(); // activityIndex -> position
+
+  for (const pattern of activityPatterns) {
+    let match;
+    while ((match = pattern.exec(xmlContent)) !== null) {
+      const actIdx = parseInt(match[1], 10) - 1; // 0-indexed
+      if (!foundPositions.has(actIdx)) {
+        // Tìm </w:p> gần nhất sau match
+        const closingTag = xmlContent.indexOf('</w:p>', match.index);
+        if (closingTag !== -1 && closingTag - match.index < 3000) {
+          foundPositions.set(actIdx, closingTag + '</w:p>'.length);
+        }
+      }
+    }
+  }
+
+  // Sắp xếp theo vị trí
+  for (const [index, position] of foundPositions) {
+    results.push({ index, position });
+  }
+  results.sort((a, b) => a.position - b.position);
+
+  return results;
 };
 
 /**
@@ -199,32 +248,50 @@ const modifyOriginalDocx = async (
 
   let documentXml: string = await documentXmlFile.async('string');
 
-  // Tạo nội dung NLS XML (không có namespace thừa)
+  // === BƯỚC 1: Chèn NLS vào phần Mục tiêu ===
   const nlsXmlContent = generateNLSXmlContent(data, includeAI);
-
-  // Tìm vị trí chèn
   const insertResult = findInsertPosition(documentXml);
 
   let modifiedXml: string;
 
   if (insertResult.found && insertResult.position > 0) {
-    // Chèn NLS XML vào đúng vị trí tìm được
     modifiedXml =
       documentXml.slice(0, insertResult.position) +
       nlsXmlContent +
       documentXml.slice(insertResult.position);
-    console.log('Đã chèn NLS vào vị trí:', insertResult.position);
+    console.log('Đã chèn NLS Mục tiêu vào vị trí:', insertResult.position);
   } else {
-    // Fallback: chèn vào cuối body
     const bodyEnd = documentXml.lastIndexOf('</w:body>');
     if (bodyEnd !== -1) {
       modifiedXml =
         documentXml.slice(0, bodyEnd) +
         nlsXmlContent +
         documentXml.slice(bodyEnd);
-      console.log('Fallback: chèn NLS vào cuối body');
+      console.log('Fallback: chèn NLS Mục tiêu vào cuối body');
     } else {
       throw new Error('Không thể tìm vị trí chèn nội dung');
+    }
+  }
+
+  // === BƯỚC 2: Chèn NLS vào từng Hoạt động ===
+  if (data.activities && data.activities.length > 0) {
+    const activityPositions = findActivityPositions(modifiedXml);
+    console.log(`Tìm thấy ${activityPositions.length} hoạt động trong DOCX`);
+
+    // Chèn từ cuối lên đầu để không bị lệch vị trí
+    const sortedDesc = [...activityPositions].sort((a, b) => b.position - a.position);
+
+    for (const actPos of sortedDesc) {
+      const activity = data.activities[actPos.index];
+      if (activity) {
+        const nlsType = activity.nlsType || 'TỔ CHỨC NLS';
+        const activityNlsXml = generateActivityNLSXml(actPos.index, nlsType, activity.digitalActivity);
+        modifiedXml =
+          modifiedXml.slice(0, actPos.position) +
+          activityNlsXml +
+          modifiedXml.slice(actPos.position);
+        console.log(`Đã chèn NLS vào Hoạt động ${actPos.index + 1} - ${nlsType}`);
+      }
     }
   }
 
@@ -313,6 +380,8 @@ const downloadAsTxt = async (
 const generateNLSContent = (data: LessonPlanData, includeAI: boolean): string => {
   let content = '';
 
+  // Mục tiêu NLS
+  content += '🚀 MỤC TIÊU NĂNG LỰC SỐ:\n';
   content += '   - Năng lực số:\n';
   if (data.digitalGoals && data.digitalGoals.length > 0) {
     data.digitalGoals.forEach((goal) => {
@@ -326,9 +395,19 @@ const generateNLSContent = (data: LessonPlanData, includeAI: boolean): string =>
   }
 
   if (includeAI) {
-    content += '   - Năng lực trí tuệ nhân tạo:\n';
+    content += '   - Năng lực trí tuệ nhân tạo (AI):\n';
     content += '      + [6.1] Sử dụng công cụ AI hỗ trợ học tập có trách nhiệm\n';
     content += '      + [6.2] Đánh giá và kiểm chứng thông tin từ AI\n';
+  }
+
+  // Hoạt động NLS
+  if (data.activities && data.activities.length > 0) {
+    content += '\n';
+    data.activities.forEach((act, idx) => {
+      const nlsType = act.nlsType || 'TỔ CHỨC NLS';
+      content += `🚀 HOẠT ĐỘNG ${idx + 1} - ${nlsType}:\n`;
+      content += `   - ${act.digitalActivity}\n`;
+    });
   }
 
   return content;

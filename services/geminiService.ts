@@ -138,7 +138,13 @@ export const analyzeLessonPlan = async (content: string, selectedSkill?: Skill):
     1. Tóm tắt ngắn gọn giáo án.
     2. Đề xuất ít nhất 3 mục tiêu năng lực số cụ thể. VỚI MỖI MỤC TIÊU, BẮT BUỘC ghi rõ mã chỉ thị (frameworkRef) theo định dạng trên.
     3. Đề xuất các công cụ số phù hợp (ví dụ: Kahoot, Quizizz, Canva, Google Earth, Padlet...).
-    4. Chia giáo án thành 4 hoạt động chính: Khởi động, Khám phá kiến thức, Luyện tập, Vận dụng. Với mỗi hoạt động, hãy đề xuất 1 hoạt động số cụ thể giúp tích hợp CNTT hiệu quả.`,
+    4. Chia giáo án thành 4 hoạt động chính: Khởi động, Khám phá kiến thức, Luyện tập, Vận dụng. Với mỗi hoạt động:
+       a. Đề xuất 1 hoạt động số cụ thể giúp tích hợp CNTT hiệu quả.
+       b. BẮT BUỘC phân loại loại NLS (nlsType) cho hoạt động đó. Chỉ chọn 1 trong 4 giá trị:
+          - "TỔ CHỨC NLS" — nếu hoạt động liên quan đến tổ chức, sắp xếp, quản lý dữ liệu/thông tin số
+          - "NỘI DUNG NLS" — nếu hoạt động liên quan đến nội dung, kiến thức số, ví dụ minh họa
+          - "SẢN PHẨM NLS" — nếu hoạt động yêu cầu học sinh tạo ra sản phẩm số
+          - "MỤC TIÊU NLS" — nếu hoạt động tập trung vào mục tiêu năng lực số cần đạt`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -176,9 +182,10 @@ export const analyzeLessonPlan = async (content: string, selectedSkill?: Skill):
                   digitalTools: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING }
-                  }
+                  },
+                  nlsType: { type: Type.STRING }
                 },
-                required: ["id", "name", "digitalActivity"]
+                required: ["id", "name", "digitalActivity", "nlsType"]
               }
             }
           },

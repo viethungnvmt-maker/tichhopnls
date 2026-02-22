@@ -5,6 +5,7 @@ export interface LessonPart {
   originalContent: string;
   digitalActivity: string;
   digitalTools: string[];
+  nlsType?: string;
 }
 
 export interface DigitalCompetencyGoal {
