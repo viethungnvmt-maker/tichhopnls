@@ -401,99 +401,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="app-container">
-        <header className="header">
-          <div className="header-content">
-            <div className="logo-section">
-              <div className="logo-icon">
-                <Sparkles size={24} color="white" />
-              </div>
-              <div className="logo-text">
-                <h1>SOẠN GIÁO ÁN NĂNG LỰC SỐ</h1>
-                <p>Hỗ trợ tích hợp Năng lực số toàn cấp bởi Nguyễn Việt Hùng</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-          {/* Disabled submit button */}
-          <button
-            className="submit-btn"
-            disabled
-            style={{ opacity: 0.6, cursor: 'not-allowed', marginBottom: '2rem', width: '100%' }}
-          >
-            <Loader2 size={20} className="spin-animation" />
-            Đang xử lý...
-          </button>
-
-          {/* Progress card */}
-          <div className="form-card animate-fadeIn" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-            {/* Circular progress */}
-            <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 1.5rem' }}>
-              <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#1e3a5f" strokeWidth="6" />
-                <circle
-                  cx="50" cy="50" r="42"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="6"
-                  strokeDasharray={`${2 * Math.PI * 42}`}
-                  strokeDashoffset={`${2 * Math.PI * 42 * (1 - loadingProgress / 100)}`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                />
-              </svg>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                color: '#60a5fa'
-              }}>
-                {loadingProgress}%
-              </div>
-            </div>
-
-            {/* Linear progress bar */}
-            <div style={{
-              width: '80%',
-              height: '6px',
-              background: '#1e3a5f',
-              borderRadius: '3px',
-              margin: '0 auto 1.5rem',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${loadingProgress}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
-                borderRadius: '3px',
-                transition: 'width 0.5s ease'
-              }} />
-            </div>
-
-            {/* Status text */}
-            <h3 style={{ color: '#e2e8f0', fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-              {loadingMessage}
-            </h3>
-            <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Powered by Gemini AI
-            </p>
-            <p style={{ color: '#fbbf24', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              💡 Vui lòng không đóng trang này
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   // Render main form
   return (
     <div className="app-container">
@@ -662,11 +569,82 @@ const App: React.FC = () => {
           <button
             className="submit-btn"
             onClick={handleSubmit}
-            disabled={!lessonFile}
+            disabled={!lessonFile || isLoading}
           >
-            <Sparkles size={20} />
-            BẮT ĐẦU SOẠN GIÁO ÁN
+            {isLoading ? (
+              <>
+                <Loader2 size={20} className="spin-animation" />
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                <Sparkles size={20} />
+                BẮT ĐẦU SOẠN GIÁO ÁN
+              </>
+            )}
           </button>
+
+          {/* Inline Loading Progress */}
+          {isLoading && (
+            <div className="form-card animate-fadeIn" style={{ textAlign: 'center', padding: '2.5rem 2rem', marginTop: '1.5rem' }}>
+              {/* Circular progress */}
+              <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 1.5rem' }}>
+                <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#1e3a5f" strokeWidth="6" />
+                  <circle
+                    cx="50" cy="50" r="42"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="6"
+                    strokeDasharray={`${2 * Math.PI * 42}`}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - loadingProgress / 100)}`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                  />
+                </svg>
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '1.25rem',
+                  fontWeight: '700',
+                  color: '#60a5fa'
+                }}>
+                  {loadingProgress}%
+                </div>
+              </div>
+
+              {/* Linear progress bar */}
+              <div style={{
+                width: '80%',
+                height: '6px',
+                background: '#1e3a5f',
+                borderRadius: '3px',
+                margin: '0 auto 1.5rem',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${loadingProgress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
+                  borderRadius: '3px',
+                  transition: 'width 0.5s ease'
+                }} />
+              </div>
+
+              {/* Status text */}
+              <h3 style={{ color: '#e2e8f0', fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                {loadingMessage}
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                Powered by Gemini AI
+              </p>
+              <p style={{ color: '#fbbf24', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                💡 Vui lòng không đóng trang này
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
