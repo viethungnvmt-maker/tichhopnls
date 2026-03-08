@@ -666,7 +666,7 @@ const App: React.FC = () => {
               <li className="guide-item">
                 <span className="guide-number">3</span>
                 <div>
-                  <span className="guide-text guide-note">Tùy - Tải file PPCT nếu muốn AI tham khảo năng lực cụ thể của trường.</span>
+                  <span className="guide-text guide-note">Tùy chọn - Tải file PPCT nếu muốn AI tham khảo năng lực cụ thể của trường.</span>
                 </div>
               </li>
             </ul>
