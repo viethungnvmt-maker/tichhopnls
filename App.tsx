@@ -490,9 +490,9 @@ const App: React.FC = () => {
                 />
               </div>
 
-              {/* File PPCT */}
+              {/* File khung năng lực số */}
               <div>
-                <p className="upload-label">File Phân phối chương trình</p>
+                <p className="upload-label">Khung năng lực số</p>
                 <div
                   className={`upload-box ${ppctFile ? 'active' : ''}`}
                   onClick={() => ppctInputRef.current?.click()}
@@ -503,9 +503,9 @@ const App: React.FC = () => {
                     {ppctFile ? <Check size={24} /> : <FileText size={24} />}
                   </div>
                   <p className="upload-title">
-                    {ppctFile ? ppctFile.name : 'Tải lên PPCT'}
+                    {ppctFile ? ppctFile.name : 'Tải file khung năng lực số'}
                   </p>
-                  <p className="upload-desc">Tài liệu tham khảo năng lực (nếu có)</p>
+                  <p className="upload-desc">Tài liệu khung năng lực số (nếu có)</p>
                   <span className="upload-formats">Hỗ trợ .docx, .pdf</span>
                   <p className="optional-text">Tùy chọn, Giúp AI xác định năng lực chính xác hơn</p>
                 </div>
@@ -666,7 +666,7 @@ const App: React.FC = () => {
               <li className="guide-item">
                 <span className="guide-number">3</span>
                 <div>
-                  <span className="guide-text guide-note">Tùy chọn - Tải file PPCT nếu muốn AI tham khảo năng lực cụ thể của trường.</span>
+                  <span className="guide-text guide-note">Tùy chọn - Tải file khung năng lực số nếu muốn AI tham khảo thêm tài liệu năng lực của trường.</span>
                 </div>
               </li>
             </ul>
