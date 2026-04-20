@@ -5,7 +5,6 @@ import { LessonPlanData, Skill } from "../types";
 // Model fallback order as per AI_INSTRUCTIONS.md
 const MODEL_FALLBACK_ORDER = [
   'gemini-2.5-flash',
-  'gemini-2.5-pro-preview-05-06',
   'gemini-2.0-flash'
 ];
 
@@ -39,7 +38,19 @@ export const setSelectedModel = (model: string): void => {
   }
 };
 
-// Try to call API with model fallback
+// Check if an error is a rate limit error (429)
+const isRateLimitError = (error: unknown): boolean => {
+  const msg = String(error);
+  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota');
+};
+
+// Check if an error is a model-not-found error (should fallback)
+const isModelNotFoundError = (error: unknown): boolean => {
+  const msg = String(error);
+  return msg.includes('404') || msg.includes('NOT_FOUND') || msg.includes('not found');
+};
+
+// Try to call API with model fallback (only fallback on model-not-found, NOT on rate limit)
 const tryWithFallback = async <T>(
   apiKey: string,
   startModel: string,
@@ -57,13 +68,27 @@ const tryWithFallback = async <T>(
       const ai = new GoogleGenAI({ apiKey });
       return await apiCall(ai, model);
     } catch (error) {
-      console.warn(`Model ${model} failed, trying next...`, error);
+      console.warn(`Model ${model} failed:`, error);
       lastError = error instanceof Error ? error : new Error(String(error));
-      // Continue to next model
+
+      // If rate limit error, throw immediately with friendly message (don't try other models)
+      if (isRateLimitError(error)) {
+        throw new Error(
+          `Đã hết lượt sử dụng miễn phí cho model ${model}. Vui lòng chờ 1-2 phút rồi thử lại, hoặc đổi sang model khác trong phần Cấu hình API Key.`
+        );
+      }
+
+      // Only fallback to next model if it's a model-not-found error
+      if (!isModelNotFoundError(error)) {
+        throw lastError;
+      }
+
+      // Continue to next model (model not found)
+      console.info(`Model ${model} không khả dụng, thử model tiếp theo...`);
     }
   }
 
-  throw lastError || new Error('Tất cả các model đều thất bại');
+  throw lastError || new Error('Tất cả các model đều không khả dụng. Vui lòng thử lại sau.');
 };
 
 export const analyzeLessonPlan = async (content: string, selectedSkill?: Skill): Promise<LessonPlanData> => {

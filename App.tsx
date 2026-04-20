@@ -32,7 +32,6 @@ const COMPETENCIES = [
 // AI Models
 const AI_MODELS = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Nhanh, ổn định' },
-  { id: 'gemini-2.5-pro-preview-05-06', name: 'Gemini 2.5 Pro', description: 'Mạnh mẽ nhất' },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Nhanh chóng' }
 ];
 
