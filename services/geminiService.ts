@@ -50,7 +50,13 @@ const isModelNotFoundError = (error: unknown): boolean => {
   return msg.includes('404') || msg.includes('NOT_FOUND') || msg.includes('not found');
 };
 
-// Try to call API with model fallback (only fallback on model-not-found, NOT on rate limit)
+// Check if an error is a service unavailable error (503)
+const isServiceUnavailableError = (error: unknown): boolean => {
+  const msg = String(error);
+  return msg.includes('503') || msg.includes('UNAVAILABLE') || msg.includes('high demand');
+};
+
+// Try to call API with model fallback and auto-retry for transient errors
 const tryWithFallback = async <T>(
   apiKey: string,
   startModel: string,
@@ -64,31 +70,56 @@ const tryWithFallback = async <T>(
   let lastError: Error | null = null;
 
   for (const model of modelsToTry) {
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      return await apiCall(ai, model);
-    } catch (error) {
-      console.warn(`Model ${model} failed:`, error);
-      lastError = error instanceof Error ? error : new Error(String(error));
+    let retryCount = 0;
+    const maxRetries = 2; // Total 3 attempts for 503 errors
 
-      // If rate limit error, throw immediately with friendly message (don't try other models)
-      if (isRateLimitError(error)) {
-        throw new Error(
-          `Đã hết lượt sử dụng miễn phí cho model ${model}. Vui lòng chờ 1-2 phút rồi thử lại, hoặc đổi sang model khác trong phần Cấu hình API Key.`
-        );
+    while (retryCount <= maxRetries) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        return await apiCall(ai, model);
+      } catch (error) {
+        console.warn(`Model ${model} failed (Attempt ${retryCount + 1}):`, error);
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // If service is busy (503), retry within the same model first
+        if (isServiceUnavailableError(error) && retryCount < maxRetries) {
+          retryCount++;
+          const delay = 1500 * retryCount;
+          console.info(`Server đang bận, thử lại sau ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        // If rate limit error (429), throw immediately (don't retry or fallback)
+        if (isRateLimitError(error)) {
+          throw new Error(
+            `Đã hết lượt sử dụng miễn phí cho model ${model}. Vui lòng chờ 1-2 phút rồi thử lại, hoặc đổi sang model khác trong phần Cấu hình API Key.`
+          );
+        }
+
+        // If it's a persistent 503 after retries, let's try next model or throw friendly error
+        if (isServiceUnavailableError(error)) {
+          // Instead of failing the whole thing, let's try next model if available
+          break; 
+        }
+
+        // Only fallback to next model if it's a model-not-found error (404)
+        if (!isModelNotFoundError(error)) {
+          throw lastError;
+        }
+
+        // Continue to next model (for 404 or persistent 503)
+        console.info(`Chuyển sang model tiếp theo vì ${model} gặp sự cố...`);
+        break; 
       }
-
-      // Only fallback to next model if it's a model-not-found error
-      if (!isModelNotFoundError(error)) {
-        throw lastError;
-      }
-
-      // Continue to next model (model not found)
-      console.info(`Model ${model} không khả dụng, thử model tiếp theo...`);
     }
   }
 
-  throw lastError || new Error('Tất cả các model đều không khả dụng. Vui lòng thử lại sau.');
+  const finalMsg = isServiceUnavailableError(lastError) 
+    ? "Server Google đang quá tải do nhu cầu cao. Vui lòng chờ vài giây rồi nhấn thử lại."
+    : "Tất cả các model đều không khả dụng hoặc vượt giới hạn. Vui lòng thử lại sau.";
+    
+  throw new Error(finalMsg);
 };
 
 export const analyzeLessonPlan = async (content: string, selectedSkill?: Skill): Promise<LessonPlanData> => {
